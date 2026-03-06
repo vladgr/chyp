@@ -34,7 +34,7 @@ pub fn execute(settings: &Settings) -> Result<()> {
     let cloudinit_path = create_cloud_init(settings)?;
 
     // Ensure user ownership of .chyp directory
-    crate::chown_chyp_dir()?;
+    crate::chown_chyp_dir(settings)?;
 
     // Start virtiofsd
     let virtiofsd_socket = start_virtiofsd(settings)?;

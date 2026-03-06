@@ -31,7 +31,7 @@ pub fn execute(settings: &Settings) -> Result<()> {
     verify_installation()?;
 
     // Ensure user ownership of .chyp directory
-    crate::chown_chyp_dir()?;
+    crate::chown_chyp_dir(settings)?;
 
     info!("Installation completed successfully!");
     Ok(())

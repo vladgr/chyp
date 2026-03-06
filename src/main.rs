@@ -7,18 +7,13 @@ use log::info;
 
 use settings::Settings;
 
-/// Get current username
-pub fn current_user() -> String {
-    std::env::var("USER").unwrap_or_else(|_| "ubuntu".to_string())
-}
-
 /// Run chown on the .chyp directory to ensure user ownership
-pub fn chown_chyp_dir() -> Result<()> {
-    let user = current_user();
-    let chyp_dir = format!("/home/{}/.chyp", user);
+pub fn chown_chyp_dir(settings: &Settings) -> Result<()> {
+    let user = &settings.user;
+    let chyp_dir = &settings.project_folder;
 
     let status = std::process::Command::new("sudo")
-        .args(["chown", "-R", &format!("{}:{}", user, user), &chyp_dir])
+        .args(["chown", "-R", &format!("{}:{}", user, user), chyp_dir])
         .status()?;
 
     if !status.success() {
@@ -33,6 +28,10 @@ pub fn chown_chyp_dir() -> Result<()> {
 #[command(version)]
 #[command(rename_all = "snake_case")]
 struct Cli {
+    /// Username for file ownership
+    #[arg(long)]
+    user: Option<String>,
+
     /// VM name
     #[arg(long)]
     vm_name: Option<String>,
@@ -89,6 +88,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let settings = Settings::with_overrides(
+        cli.user,
         cli.vm_name,
         cli.image_url,
         cli.cpus,

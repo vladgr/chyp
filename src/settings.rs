@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS: &str = include_str!("../settings.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
+    pub user: String,
     pub vm_name: String,
     pub image_url: String,
     pub cpus: u32,
@@ -24,6 +25,7 @@ impl Default for Settings {
 impl Settings {
     /// Load default settings and apply CLI overrides
     pub fn with_overrides(
+        user: Option<String>,
         vm_name: Option<String>,
         image_url: Option<String>,
         cpus: Option<u32>,
@@ -34,6 +36,9 @@ impl Settings {
     ) -> Self {
         let mut settings = Self::default();
 
+        if let Some(v) = user {
+            settings.user = v;
+        }
         if let Some(v) = vm_name {
             settings.vm_name = v;
         }

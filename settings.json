@@ -1,4 +1,5 @@
 {
+  "user": "vg",
   "vm_name": "vm",
   "image_url": "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
   "cpus": 2,
