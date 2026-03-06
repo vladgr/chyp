@@ -11,6 +11,7 @@ pub struct Settings {
     pub cpus: u32,
     pub memory_size: u32,
     pub disk_size: u32,
+    pub project_folder: String,
     pub shared_folder: String,
 }
 
@@ -28,6 +29,7 @@ impl Settings {
         cpus: Option<u32>,
         memory_size: Option<u32>,
         disk_size: Option<u32>,
+        project_folder: Option<String>,
         shared_folder: Option<String>,
     ) -> Self {
         let mut settings = Self::default();
@@ -47,6 +49,9 @@ impl Settings {
         if let Some(v) = disk_size {
             settings.disk_size = v;
         }
+        if let Some(v) = project_folder {
+            settings.project_folder = v;
+        }
         if let Some(v) = shared_folder {
             settings.shared_folder = v;
         }
@@ -54,9 +59,9 @@ impl Settings {
         settings
     }
 
-    /// Get the base directory, expanding ~ to home directory
+    /// Get the project directory (base directory for all VM files)
     pub fn base_dir(&self) -> PathBuf {
-        expand_tilde(&self.shared_folder)
+        PathBuf::from(&self.project_folder)
     }
 
     /// Get the images directory
@@ -69,27 +74,13 @@ impl Settings {
         self.base_dir().join("vms")
     }
 
-    /// Get the shared folder directory
+    /// Get the shared folder directory (shared with VM)
     pub fn shared_dir(&self) -> PathBuf {
-        self.base_dir().join("shared")
+        PathBuf::from(&self.shared_folder)
     }
 
     /// Get the VM-specific directory
     pub fn vm_dir(&self) -> PathBuf {
         self.vms_dir().join(&self.vm_name)
     }
-}
-
-/// Expand ~ to home directory
-pub fn expand_tilde(path: &str) -> PathBuf {
-    if path.starts_with("~/") {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).join(&path[2..]);
-        }
-    } else if path == "~" {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home);
-        }
-    }
-    PathBuf::from(path)
 }

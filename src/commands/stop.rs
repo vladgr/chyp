@@ -5,8 +5,8 @@ use std::process::Command;
 pub fn execute() -> Result<()> {
     info!("Stopping VM...");
 
-    let status = Command::new("pkill")
-        .args(["-f", "cloud-hypervisor"])
+    let status = Command::new("sudo")
+        .args(["pkill", "-f", "cloud-hypervisor"])
         .status()
         .context("Failed to run pkill")?;
 
@@ -17,8 +17,8 @@ pub fn execute() -> Result<()> {
     }
 
     // Also kill virtiofsd
-    let _ = Command::new("pkill")
-        .args(["-f", "virtiofsd"])
+    let _ = Command::new("sudo")
+        .args(["pkill", "-f", "virtiofsd"])
         .status();
 
     Ok(())

@@ -1,51 +1,28 @@
 mod commands;
 mod settings;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use log::info;
-use std::os::unix::process::CommandExt;
-use std::process::Command;
 
 use settings::Settings;
 
-/// Check if running as root, if not re-execute with sudo
-fn ensure_root() -> Result<()> {
-    let uid = unsafe { libc::getuid() };
-    if uid != 0 {
-        info!("Elevating privileges with sudo...");
-
-        let args: Vec<String> = std::env::args().collect();
-        let exe = std::env::current_exe().context("Failed to get current executable")?;
-
-        // Preserve original user's HOME directory and UID/GID
-        let home = std::env::var("HOME").unwrap_or_default();
-        let sudo_uid = uid.to_string();
-        let sudo_gid = unsafe { libc::getgid() }.to_string();
-
-        let err = Command::new("sudo")
-            .arg(format!("HOME={}", home))
-            .arg(format!("SUDO_UID={}", sudo_uid))
-            .arg(format!("SUDO_GID={}", sudo_gid))
-            .arg(exe)
-            .args(&args[1..])
-            .exec();
-
-        // exec() only returns on error
-        anyhow::bail!("Failed to execute sudo: {}", err);
-    }
-    Ok(())
+/// Get current username
+pub fn current_user() -> String {
+    std::env::var("USER").unwrap_or_else(|_| "ubuntu".to_string())
 }
 
-/// Chown path to original user (if running via sudo)
-pub fn chown_to_user(path: &std::path::Path) -> Result<()> {
-    if let (Ok(uid_str), Ok(gid_str)) = (std::env::var("SUDO_UID"), std::env::var("SUDO_GID")) {
-        if let (Ok(uid), Ok(gid)) = (uid_str.parse::<u32>(), gid_str.parse::<u32>()) {
-            let path_cstr = std::ffi::CString::new(path.to_str().unwrap_or_default())?;
-            unsafe {
-                libc::chown(path_cstr.as_ptr(), uid, gid);
-            }
-        }
+/// Run chown on the .chyp directory to ensure user ownership
+pub fn chown_chyp_dir() -> Result<()> {
+    let user = current_user();
+    let chyp_dir = format!("/home/{}/.chyp", user);
+
+    let status = std::process::Command::new("sudo")
+        .args(["chown", "-R", &format!("{}:{}", user, user), &chyp_dir])
+        .status()?;
+
+    if !status.success() {
+        log::warn!("Failed to chown {}", chyp_dir);
     }
     Ok(())
 }
@@ -76,7 +53,11 @@ struct Cli {
     #[arg(long)]
     disk_size: Option<u32>,
 
-    /// Shared folder path
+    /// Project folder path (stores VM images and configs)
+    #[arg(long)]
+    project_folder: Option<String>,
+
+    /// Shared folder path (shared with VM)
     #[arg(long)]
     shared_folder: Option<String>,
 
@@ -96,8 +77,8 @@ enum Commands {
     /// Run virtual machine
     Run,
 
-    /// Kill running VM
-    Kill,
+    /// Stop running VM
+    Stop,
 }
 
 fn main() -> Result<()> {
@@ -113,6 +94,7 @@ fn main() -> Result<()> {
         cli.cpus,
         cli.memory_size,
         cli.disk_size,
+        cli.project_folder,
         cli.shared_folder,
     );
 
@@ -120,20 +102,16 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Install => {
-            ensure_root()?;
             commands::install::execute(&settings)?;
         }
         Commands::SetupNetwork => {
-            ensure_root()?;
             commands::network::execute()?;
         }
         Commands::Run => {
-            ensure_root()?;
             commands::run::execute(&settings)?;
         }
-        Commands::Kill => {
-            ensure_root()?;
-            commands::kill::execute()?;
+        Commands::Stop => {
+            commands::stop::execute()?;
         }
     }
 

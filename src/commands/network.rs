@@ -33,8 +33,8 @@ pub fn execute() -> Result<()> {
 fn enable_ip_forwarding() -> Result<()> {
     info!("Enabling IP forwarding...");
 
-    let status = Command::new("sysctl")
-        .args(["-w", "net.ipv4.ip_forward=1"])
+    let status = Command::new("sudo")
+        .args(["sysctl", "-w", "net.ipv4.ip_forward=1"])
         .status()
         .context("Failed to enable IP forwarding")?;
 
@@ -44,8 +44,9 @@ fn enable_ip_forwarding() -> Result<()> {
 
     // Make persistent
     let sysctl_conf = "net.ipv4.ip_forward=1";
-    let status = Command::new("sh")
+    let status = Command::new("sudo")
         .args([
+            "sh",
             "-c",
             &format!(
                 "grep -q 'net.ipv4.ip_forward=1' /etc/sysctl.conf || echo '{}' >> /etc/sysctl.conf",
@@ -73,8 +74,8 @@ fn create_bridge() -> Result<()> {
         info!("Bridge {} already exists", BRIDGE_NAME);
     } else {
         // Create bridge
-        let status = Command::new("ip")
-            .args(["link", "add", "name", BRIDGE_NAME, "type", "bridge"])
+        let status = Command::new("sudo")
+            .args(["ip", "link", "add", "name", BRIDGE_NAME, "type", "bridge"])
             .status()
             .context("Failed to create bridge")?;
 
@@ -84,8 +85,8 @@ fn create_bridge() -> Result<()> {
     }
 
     // Set bridge up
-    let status = Command::new("ip")
-        .args(["link", "set", BRIDGE_NAME, "up"])
+    let status = Command::new("sudo")
+        .args(["ip", "link", "set", BRIDGE_NAME, "up"])
         .status()
         .context("Failed to bring bridge up")?;
 
@@ -101,8 +102,8 @@ fn create_bridge() -> Result<()> {
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     if !output_str.contains("192.168.100.1") {
-        let status = Command::new("ip")
-            .args(["addr", "add", BRIDGE_IP, "dev", BRIDGE_NAME])
+        let status = Command::new("sudo")
+            .args(["ip", "addr", "add", BRIDGE_IP, "dev", BRIDGE_NAME])
             .status()
             .context("Failed to assign IP to bridge")?;
 
@@ -127,8 +128,8 @@ fn create_tap() -> Result<()> {
         info!("TAP device {} already exists", TAP_NAME);
     } else {
         // Create TAP device
-        let status = Command::new("ip")
-            .args(["tuntap", "add", "dev", TAP_NAME, "mode", "tap"])
+        let status = Command::new("sudo")
+            .args(["ip", "tuntap", "add", "dev", TAP_NAME, "mode", "tap"])
             .status()
             .context("Failed to create TAP device")?;
 
@@ -138,8 +139,8 @@ fn create_tap() -> Result<()> {
     }
 
     // Set TAP up
-    let status = Command::new("ip")
-        .args(["link", "set", TAP_NAME, "up"])
+    let status = Command::new("sudo")
+        .args(["ip", "link", "set", TAP_NAME, "up"])
         .status()
         .context("Failed to bring TAP up")?;
 
@@ -148,8 +149,8 @@ fn create_tap() -> Result<()> {
     }
 
     // Add TAP to bridge
-    let status = Command::new("ip")
-        .args(["link", "set", TAP_NAME, "master", BRIDGE_NAME])
+    let status = Command::new("sudo")
+        .args(["ip", "link", "set", TAP_NAME, "master", BRIDGE_NAME])
         .status()
         .context("Failed to add TAP to bridge")?;
 
@@ -180,8 +181,9 @@ fn setup_nat() -> Result<()> {
     info!("Using {} as default interface for NAT", default_iface);
 
     // Setup iptables MASQUERADE
-    let status = Command::new("iptables")
+    let status = Command::new("sudo")
         .args([
+            "iptables",
             "-t", "nat",
             "-C", "POSTROUTING",
             "-s", BRIDGE_SUBNET,
@@ -192,8 +194,9 @@ fn setup_nat() -> Result<()> {
 
     // If rule doesn't exist, add it
     if status.is_err() || !status.unwrap().success() {
-        let status = Command::new("iptables")
+        let status = Command::new("sudo")
             .args([
+                "iptables",
                 "-t", "nat",
                 "-A", "POSTROUTING",
                 "-s", BRIDGE_SUBNET,
@@ -209,8 +212,9 @@ fn setup_nat() -> Result<()> {
     }
 
     // Allow forwarding from bridge
-    let status = Command::new("iptables")
+    let status = Command::new("sudo")
         .args([
+            "iptables",
             "-C", "FORWARD",
             "-i", BRIDGE_NAME,
             "-o", default_iface,
@@ -219,8 +223,9 @@ fn setup_nat() -> Result<()> {
         .status();
 
     if status.is_err() || !status.unwrap().success() {
-        Command::new("iptables")
+        Command::new("sudo")
             .args([
+                "iptables",
                 "-A", "FORWARD",
                 "-i", BRIDGE_NAME,
                 "-o", default_iface,
@@ -231,8 +236,9 @@ fn setup_nat() -> Result<()> {
     }
 
     // Allow return traffic
-    let status = Command::new("iptables")
+    let status = Command::new("sudo")
         .args([
+            "iptables",
             "-C", "FORWARD",
             "-i", default_iface,
             "-o", BRIDGE_NAME,
@@ -243,8 +249,9 @@ fn setup_nat() -> Result<()> {
         .status();
 
     if status.is_err() || !status.unwrap().success() {
-        Command::new("iptables")
+        Command::new("sudo")
             .args([
+                "iptables",
                 "-A", "FORWARD",
                 "-i", default_iface,
                 "-o", BRIDGE_NAME,

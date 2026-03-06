@@ -30,6 +30,9 @@ pub fn execute(settings: &Settings) -> Result<()> {
     // Verify installation
     verify_installation()?;
 
+    // Ensure user ownership of .chyp directory
+    crate::chown_chyp_dir()?;
+
     info!("Installation completed successfully!");
     Ok(())
 }
@@ -37,8 +40,8 @@ pub fn execute(settings: &Settings) -> Result<()> {
 fn install_dependencies() -> Result<()> {
     info!("Installing system dependencies...");
 
-    let status = Command::new("apt-get")
-        .args(["install", "-y", "qemu-utils", "cloud-image-utils", "genisoimage", "libguestfs-tools"])
+    let status = Command::new("sudo")
+        .args(["apt-get", "install", "-y", "qemu-utils", "cloud-image-utils", "genisoimage", "libguestfs-tools"])
         .status()
         .context("Failed to install dependencies")?;
 
@@ -62,7 +65,6 @@ fn create_directories(settings: &Settings) -> Result<()> {
     for dir in &dirs {
         fs::create_dir_all(dir)
             .with_context(|| format!("Failed to create directory: {:?}", dir))?;
-        crate::chown_to_user(dir)?;
         info!("Created directory: {:?}", dir);
     }
 
@@ -121,8 +123,8 @@ fn install_firmware() -> Result<()> {
     info!("Downloading hypervisor firmware...");
 
     // Create directory
-    let status = Command::new("mkdir")
-        .args(["-p", firmware_dir])
+    let status = Command::new("sudo")
+        .args(["mkdir", "-p", firmware_dir])
         .status()
         .context("Failed to create firmware directory")?;
 
@@ -133,8 +135,8 @@ fn install_firmware() -> Result<()> {
     // Download firmware
     let firmware_url = "https://github.com/cloud-hypervisor/rust-hypervisor-firmware/releases/download/0.4.2/hypervisor-fw";
 
-    let status = Command::new("curl")
-        .args(["-L", "-o", &firmware_path, firmware_url])
+    let status = Command::new("sudo")
+        .args(["curl", "-L", "-o", &firmware_path, firmware_url])
         .status()
         .context("Failed to download firmware")?;
 

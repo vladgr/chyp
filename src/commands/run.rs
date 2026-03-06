@@ -16,10 +16,9 @@ pub fn execute(settings: &Settings) -> Result<()> {
     info!("Starting VM: {}", settings.vm_name);
     info!("Configuration: {} CPUs, {} GB RAM", settings.cpus, settings.memory_size);
 
-    // Ensure directories exist and set correct ownership
+    // Ensure directories exist
     for dir in [settings.base_dir(), settings.vm_dir(), settings.images_dir(), settings.shared_dir()] {
         fs::create_dir_all(&dir)?;
-        crate::chown_to_user(&dir)?;
     }
 
     // Download image if not present
@@ -33,6 +32,9 @@ pub fn execute(settings: &Settings) -> Result<()> {
 
     // Create cloud-init ISO
     let cloudinit_path = create_cloud_init(settings)?;
+
+    // Ensure user ownership of .chyp directory
+    crate::chown_chyp_dir()?;
 
     // Start virtiofsd
     let virtiofsd_socket = start_virtiofsd(settings)?;
@@ -146,7 +148,6 @@ fn create_overlay_disk(settings: &Settings, base_image: &Path) -> Result<std::pa
     }
 
     info!("Disk created: {:?} ({}GB)", disk_path, settings.disk_size);
-    crate::chown_to_user(&disk_path)?;
     Ok(disk_path)
 }
 
@@ -163,8 +164,8 @@ fn extract_kernel_initrd(settings: &Settings, disk_path: &Path) -> Result<(std::
     info!("Extracting kernel and initrd from disk image...");
 
     // Use virt-ls to find kernel files
-    let output = Command::new("virt-ls")
-        .args(["-a", disk_path.to_str().unwrap(), "/boot/"])
+    let output = Command::new("sudo")
+        .args(["virt-ls", "-a", disk_path.to_str().unwrap(), "/boot/"])
         .output()
         .context("Failed to run virt-ls. Install libguestfs-tools: sudo apt-get install libguestfs-tools")?;
 
@@ -192,8 +193,9 @@ fn extract_kernel_initrd(settings: &Settings, disk_path: &Path) -> Result<(std::
     info!("Found initrd: {}", initrd_name);
 
     // Extract kernel
-    let status = Command::new("virt-copy-out")
+    let status = Command::new("sudo")
         .args([
+            "virt-copy-out",
             "-a", disk_path.to_str().unwrap(),
             &format!("/boot/{}", kernel_name),
             vm_dir.to_str().unwrap(),
@@ -209,8 +211,9 @@ fn extract_kernel_initrd(settings: &Settings, disk_path: &Path) -> Result<(std::
     fs::rename(vm_dir.join(&kernel_name), &kernel_path)?;
 
     // Extract initrd
-    let status = Command::new("virt-copy-out")
+    let status = Command::new("sudo")
         .args([
+            "virt-copy-out",
             "-a", disk_path.to_str().unwrap(),
             &format!("/boot/{}", initrd_name),
             vm_dir.to_str().unwrap(),
@@ -226,8 +229,6 @@ fn extract_kernel_initrd(settings: &Settings, disk_path: &Path) -> Result<(std::
     fs::rename(vm_dir.join(&initrd_name), &initrd_path)?;
 
     info!("Extracted kernel and initrd");
-    crate::chown_to_user(&kernel_path)?;
-    crate::chown_to_user(&initrd_path)?;
 
     Ok((kernel_path, initrd_path))
 }
@@ -453,8 +454,9 @@ fn start_virtiofsd(settings: &Settings) -> Result<String> {
 
     // Start virtiofsd in background
     // Try new-style arguments first (virtiofsd 1.x from rust-vmm)
-    let mut child = Command::new(&virtiofsd_path)
+    let mut child = Command::new("sudo")
         .args([
+            &virtiofsd_path,
             &format!("--socket-path={}", socket_path),
             &format!("--shared-dir={}", settings.shared_dir().display()),
             "--cache=always",
@@ -537,7 +539,8 @@ fn run_cloud_hypervisor(
     info!("Shared folder: /mnt/shared");
     info!("");
 
-    let status = Command::new("cloud-hypervisor")
+    let status = Command::new("sudo")
+        .arg("cloud-hypervisor")
         .args(&args)
         .status()
         .context("Failed to start cloud-hypervisor")?;
