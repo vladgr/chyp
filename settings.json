@@ -1,0 +1,8 @@
+{
+  "vm_name": "vm",
+  "image_url": "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
+  "cpus": 2,
+  "memory_size": 2,
+  "disk_size": 20,
+  "shared_folder": "~/.chyp/"
+}
