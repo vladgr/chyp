@@ -4,11 +4,13 @@ Usage: chyp [OPTIONS] COMMAND
 
 Commands:
 
-* install        Install Cloud Hypervisor and virtiofsd
-* setup-network  Setup network bridge with internet access
-* run            Run virtual machine
-* kill           Kill running VM
-* help           Print this message or the help of the given subcommand(s)
+```
+  install        Install Cloud Hypervisor and virtiofsd
+  setup-network  Setup network bridge with internet access
+  run            Run virtual machine
+  kill           Kill running VM
+  help           Print this message or the help of the given subcommand(s)
+```
 
 Options:
 
