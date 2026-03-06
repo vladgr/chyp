@@ -238,7 +238,7 @@ fn create_cloud_init(settings: &Settings) -> Result<std::path::PathBuf> {
     let iso_path = vm_dir.join("cloud-init.iso");
 
     // Read SSH public key
-    let ssh_key = read_ssh_public_key()?;
+    let ssh_key = read_ssh_public_key(settings)?;
 
     // Create cloud-init directory
     let ci_dir = vm_dir.join("cloud-init");
@@ -361,8 +361,8 @@ ethernets:
     Ok(iso_path)
 }
 
-fn read_ssh_public_key() -> Result<String> {
-    let home = std::env::var("HOME").context("HOME not set")?;
+fn read_ssh_public_key(settings: &Settings) -> Result<String> {
+    let home = format!("/home/{}", settings.user);
     let key_paths = [
         format!("{}/.ssh/id_ed25519.pub", home),
         format!("{}/.ssh/id_rsa.pub", home),
@@ -377,11 +377,11 @@ fn read_ssh_public_key() -> Result<String> {
     }
 
     warn!("No SSH public key found. Generating new key pair...");
-    generate_ssh_key()
+    generate_ssh_key(settings)
 }
 
-fn generate_ssh_key() -> Result<String> {
-    let home = std::env::var("HOME").context("HOME not set")?;
+fn generate_ssh_key(settings: &Settings) -> Result<String> {
+    let home = format!("/home/{}", settings.user);
     let key_path = format!("{}/.ssh/id_ed25519", home);
     let pub_key_path = format!("{}.pub", key_path);
 

@@ -26,3 +26,9 @@ Options:
 -h, --help                             Print help
 -V, --version                          Print version
 ```
+
+
+Run:
+```
+sudo chyp run
+```

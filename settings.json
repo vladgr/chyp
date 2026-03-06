@@ -5,6 +5,6 @@
   "cpus": 2,
   "memory_size": 2,
   "disk_size": 20,
-  "project_folder": "/home/ubuntu/.chyp/",
+  "project_folder": "/home/vg/.chyp/",
   "shared_folder": "/tmp/chyp/"
 }
